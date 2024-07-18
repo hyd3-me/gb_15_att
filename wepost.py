@@ -10,7 +10,7 @@ _LOG_PATH = '../wepost.log'
 
 
 class WePost:
-    _CMD_LIST = ['-p, -c, -r, -a, -h, -q']
+    _CMD_LIST = ['-p, -c, -r, -a, -d, -h, -q']
     def __init__(self, _db_path, _log_path):
         self.set_conn(_db_path)
         self.set_logger(_log_path)
@@ -51,6 +51,19 @@ body VARCHAR(512) NOT NULL
             _query = self.conn.execute(_Q_SELECT_BY_USERNAME, (_name,))
             _data = _query.fetchall()
             return 0, _data
+    
+    def force_delete_post(self, _id):
+        _Q_FORCE_DELETE = "DELETE FROM Posts WHERE id = ?"
+        with self.conn:
+            _query = self.conn.execute(_Q_FORCE_DELETE, (_id,))
+            self.conn.commit()
+        return 0, f'the record with id:{_id} has been deleted'
+    
+    def user_del_post(self, _args):
+        _Q_DELETE_POST = "DELETE FROM Posts WHERE id = ? AND username = ?"
+        with self.conn:
+            _cur = self.execute(_Q_DELETE_POST, _args)
+            return 0, f'{_cur.rowcount} entries have been deleted'
     
     def validate_username(self, _name):
         _VALID_CHARS = string.ascii_lowercase + string.digits + '_!'
@@ -123,7 +136,6 @@ body VARCHAR(512) NOT NULL
             if not err:
                 _msg = f'a user has been added: {_args[0]}'
                 self.logger.info(_msg)
-                print(resp)
             return err, resp
     
     def create_post(self, _args):
@@ -145,6 +157,37 @@ body VARCHAR(512) NOT NULL
         if resp != 'ok':
             return 0, f"passwords don't match"
         err, resp = self.insert_post((_args[0], _args[2]))
+        if not err:
+            self.logger.info(resp)
+        return err, resp
+    
+    def parse_id(self, _id):
+        try:
+            return 0, int(_id)
+        except Exception as e:
+            return 1, e
+
+    def delete_post(self, _args):
+        err, id = self.parse_id(_args[2])
+        if err:
+            return 1, id
+        err, resp = self.user_exists(_args[0])
+        if err:
+            return err, resp
+        if not resp:
+            _msg = f'there is no such user'
+            return 1, _msg
+        err, resp_pwd = self.validate_password(resp, _args)
+        if err:
+            return err, resp_pwd
+        if resp_pwd != 'ok':
+            return 0, f"passwords don't match"
+        if resp[0][2] == 99:
+            err, resp = self.force_delete_post(id)
+            if not err:
+                self.logger.info(resp)
+            return err, resp
+        err, resp = self.user_del_post((id, _args[0]))
         if not err:
             self.logger.info(resp)
         return err, resp
@@ -231,6 +274,7 @@ body VARCHAR(512) NOT NULL
     def check_args(self, _args):
         if _args.c:
             err, resp = self.create_user(_args.c)
+            print(resp)
         elif _args.p:
             err, resp = self.create_post(_args.p)
             print(resp)
@@ -239,6 +283,9 @@ body VARCHAR(512) NOT NULL
             print(resp)
         elif _args.a:
             err, resp = self.change_status(_args.a, _status=99)
+            print(resp)
+        elif _args.d:
+            err, resp = self.delete_post(_args.d)
             print(resp)
         else:
             print('not args')
@@ -258,6 +305,8 @@ def make_parser():
     parser.add_argument('-r', type=str, nargs=3 ,help=DESC_R)
     DESC_A = f'usage:$ wepost.py user_admin pwd user_for_admin'
     parser.add_argument('-a', type=str, nargs=3 ,help=DESC_A)
+    DESC_D = f'usage:$ wepost.py user pwd id_for_post_del'
+    parser.add_argument('-d', type=str, nargs=3 ,help=DESC_D)
     return parser
 
 def main():
