@@ -38,6 +38,7 @@ status INTEGER DEFAULT 1
         self.conn.execute('''
 CREATE TABLE IF NOT EXISTS Posts (
 id INTEGER PRIMARY KEY,
+username VARCHAR(64),
 body VARCHAR(512) NOT NULL
 )
 ''')
@@ -45,7 +46,7 @@ body VARCHAR(512) NOT NULL
     
     def user_exists(self, _name):
         with self.conn:
-            _Q_SELECT_BY_USERNAME = "SELECT username FROM Users WHERE username = ? LIMIT 1"
+            _Q_SELECT_BY_USERNAME = "SELECT username, password FROM Users WHERE username = ? LIMIT 1"
             _query = self.conn.execute(_Q_SELECT_BY_USERNAME, (_name,))
             _data = _query.fetchall()
             return 0, _data
@@ -61,12 +62,26 @@ body VARCHAR(512) NOT NULL
             if ch.lower() not in _VALID_CHARS:
                 return 1, f'valid characters: {_VALID_CHARS}'
         return 0, 'ok'
+    
+    def validate_password(self, _qdata, _args):
+        salt = _qdata[0][1][:32]
+        key = hashlib.pbkdf2_hmac('sha256', _args[1].encode(), salt, 128)
+        if _qdata[0][1] != salt + key:
+            return 0, 'not'
+        return 0, 'ok'
+        
 
     def insert_user(self, _args):
         with self.conn:
             self.conn.execute("INSERT INTO Users (username, password) VALUES (?, ?)", _args)
             self.conn.commit()
         return 0, f'{_args[0]} has been added'
+    
+    def insert_post(self, _args):
+        with self.conn:
+            _cur = self.conn.execute("INSERT INTO Posts (username, body) VALUES (?, ?)", _args)
+            self.conn.commit()
+        return 0, f'{_args[0]} added a post with id: {_cur.lastrowid}'
 
     def make_key(self, _args):
         salt = os.urandom(32)
@@ -92,11 +107,31 @@ body VARCHAR(512) NOT NULL
         else:
             err, resp = self.add_user(_args)
             if not err:
-                _msg = f'a user has been added: {_args}'
+                _msg = f'a user has been added: {_args[0]}'
                 self.logger.info(_msg)
                 print(resp)
             return err, resp
     
+    def create_post(self, _args):
+        if len(_args[2]) > 512:
+            _msg = f'the data is no more than 512 characters'
+            return 0, _msg
+        err, resp = self.user_exists(_args[0])
+        if err:
+            return err, resp
+        if not resp:
+            _msg = f'there is no such user'
+            return 1, _msg
+        err, resp = self.validate_password(resp, _args)
+        if err:
+            return err, resp
+        if resp != 'ok':
+            return 0, f"passwords don't match"
+        err, resp = self.insert_post((_args[0], _args[2]))
+        if not err:
+            self.logger.info(resp)
+        return err, resp
+
     def inter_mode(self):
         _HELP_MSG = '''
         -q command for quite
@@ -127,9 +162,8 @@ body VARCHAR(512) NOT NULL
         if _args.c:
             err, resp = self.create_user(_args.c)
         elif _args.p:
-            print('process p')
-            print(_args.p)
-            # err, resp = self.create_post(_args.p)
+            err, resp = self.create_post(_args.p)
+            print(resp)
         else:
             print('not args')
             print(_args)
