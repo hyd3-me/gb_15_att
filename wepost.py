@@ -10,7 +10,7 @@ _LOG_PATH = '../wepost.log'
 
 
 class WePost:
-    _CMD_LIST = ['-p, -c, -h, -q']
+    _CMD_LIST = ['-p, -c, -r, -h, -q']
     def __init__(self, _db_path, _log_path):
         self.set_conn(_db_path)
         self.set_logger(_log_path)
@@ -201,6 +201,14 @@ body VARCHAR(512) NOT NULL
                     print(f'usage: username pwd text')
                 else:
                     err, resp = self.create_post(name_pwd_body)
+                    print(resp)
+            elif cmd == 'r' or cmd == '-r':
+                name_pwd_target = input('enter username and password and user_for_RO: ')
+                name_pwd_target = name_pwd_target.split()
+                if len(name_pwd_target) != 3:
+                    print(f'usage: username pwd username_for_RO')
+                else:
+                    err, resp = self.change_status(name_pwd_target)
                     print(resp)
             elif cmd == 'h' or cmd == '-h':
                 print(_HELP_MSG)
