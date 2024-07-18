@@ -213,6 +213,14 @@ body VARCHAR(512) NOT NULL
                 else:
                     err, resp = self.change_status(name_pwd_target)
                     print(resp)
+            elif cmd == 'a' or cmd == '-a':
+                name_pwd_target = input('enter username and password and user_for_admin: ')
+                name_pwd_target = name_pwd_target.split()
+                if len(name_pwd_target) != 3:
+                    print(f'usage: username pwd username_for_admin')
+                else:
+                    err, resp = self.change_status(name_pwd_target, _status=99)
+                    print(resp)
             elif cmd == 'h' or cmd == '-h':
                 print(_HELP_MSG)
             else:
