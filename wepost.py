@@ -292,6 +292,9 @@ body VARCHAR(512) NOT NULL
         elif _args.a:
             err, resp = self.change_status(_args.a, _status=99)
             print(resp)
+        elif _args.w:
+            err, resp = self.change_status(_args.w, _status=1)
+            print(resp)
         elif _args.d:
             err, resp = self.delete_post(_args.d)
             print(resp)
@@ -313,6 +316,8 @@ def make_parser():
     parser.add_argument('-r', type=str, nargs=3 ,help=DESC_R)
     DESC_A = f'usage:$ wepost.py user_admin pwd user_for_admin'
     parser.add_argument('-a', type=str, nargs=3 ,help=DESC_A)
+    DESC_W = f'usage:$ wepost.py user_admin pwd username_for_write'
+    parser.add_argument('-w', type=str, nargs=3 ,help=DESC_W)
     DESC_D = f'usage:$ wepost.py user pwd id_for_post_del'
     parser.add_argument('-d', type=str, nargs=3 ,help=DESC_D)
     return parser
