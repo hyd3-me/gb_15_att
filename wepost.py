@@ -263,6 +263,11 @@ body VARCHAR(512) NOT NULL
         -q command for quite
         -c create a user. usage: name pwd
         -p make a post
+        -d delete psot
+        -f delete user
+        -r change status to RO
+        -w change status to W
+        -a change status to admin
         '''
         print(self._CMD_LIST)
         STATE = 1
@@ -277,6 +282,7 @@ body VARCHAR(512) NOT NULL
                     print(f'usage: username pwd')
                 else:
                     err, resp = self.create_user(name_pwd)
+                    print(resp)
             elif cmd == 'p' or cmd == '-p':
                 name_pwd_body = input('enter username and password and text_body: ')
                 name_pwd_body = name_pwd_body.split()
@@ -316,6 +322,14 @@ body VARCHAR(512) NOT NULL
                     print(f'usage: username pwd id')
                 else:
                     err, resp = self.delete_post(name_pwd_target)
+                    print(resp)
+            elif cmd == 'f' or cmd == '-f':
+                name_pwd_target = input('enter username and password and username_for_del: ')
+                name_pwd_target = name_pwd_target.split()
+                if len(name_pwd_target) != 3:
+                    print(f'usage: username pwd username_for_del')
+                else:
+                    err, resp = self.delete_user(name_pwd_target)
                     print(resp)
             elif cmd == 'h' or cmd == '-h':
                 print(_HELP_MSG)
