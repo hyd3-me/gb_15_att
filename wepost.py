@@ -46,7 +46,7 @@ body VARCHAR(512) NOT NULL
     
     def user_exists(self, _name):
         with self.conn:
-            _Q_SELECT_BY_USERNAME = "SELECT username, password FROM Users WHERE username = ? LIMIT 1"
+            _Q_SELECT_BY_USERNAME = "SELECT username, password, status FROM Users WHERE username = ? LIMIT 1"
             _query = self.conn.execute(_Q_SELECT_BY_USERNAME, (_name,))
             _data = _query.fetchall()
             return 0, _data
@@ -122,6 +122,9 @@ body VARCHAR(512) NOT NULL
         if not resp:
             _msg = f'there is no such user'
             return 1, _msg
+        if resp[0][2] < 1:
+            _msg = f'your status does not allow you to post'
+            return err, _msg
         err, resp = self.validate_password(resp, _args)
         if err:
             return err, resp
@@ -151,6 +154,14 @@ body VARCHAR(512) NOT NULL
                     print(f'usage: username pwd')
                 else:
                     err, resp = self.create_user(name_pwd)
+            elif cmd == 'p' or cmd == '-p':
+                name_pwd_body = input('enter username and password and text_body: ')
+                name_pwd_body = name_pwd_body.split()
+                if len(name_pwd_body) != 3:
+                    print(f'usage: username pwd text')
+                else:
+                    err, resp = self.create_post(name_pwd_body)
+                    print(resp)
             elif cmd == 'h' or cmd == '-h':
                 print(_HELP_MSG)
             else:
