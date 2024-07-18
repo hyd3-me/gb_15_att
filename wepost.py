@@ -10,7 +10,7 @@ _LOG_PATH = '../wepost.log'
 
 
 class WePost:
-    _CMD_LIST = ['-p, -c, -r, -h, -q']
+    _CMD_LIST = ['-p, -c, -r, -a, -h, -q']
     def __init__(self, _db_path, _log_path):
         self.set_conn(_db_path)
         self.set_logger(_log_path)
@@ -150,6 +150,9 @@ body VARCHAR(512) NOT NULL
         return err, resp
     
     def change_status(self, _args, _status=0):
+        if not _args:
+            _msg =f'not args'
+            return 1, _msg
         err, resp = self.user_exists(_args[0])
         if err:
             return err, resp
@@ -226,6 +229,9 @@ body VARCHAR(512) NOT NULL
         elif _args.r:
             err, resp = self.change_status(_args.r)
             print(resp)
+        elif _args.a:
+            err, resp = self.change_status(_args.a, _status=99)
+            print(resp)
         else:
             print('not args')
             print(_args)
@@ -242,6 +248,8 @@ def make_parser():
     parser.add_argument('-p', type=str, nargs=3 ,help=DESC_P)
     DESC_R = f'usage:$ wepost.py user_admin pwd user_for_ro'
     parser.add_argument('-r', type=str, nargs=3 ,help=DESC_R)
+    DESC_A = f'usage:$ wepost.py user_admin pwd user_for_admin'
+    parser.add_argument('-a', type=str, nargs=3 ,help=DESC_A)
     return parser
 
 def main():
