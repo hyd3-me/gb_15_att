@@ -264,6 +264,14 @@ body VARCHAR(512) NOT NULL
                 else:
                     err, resp = self.change_status(name_pwd_target, _status=99)
                     print(resp)
+            elif cmd == 'd' or cmd == '-d':
+                name_pwd_target = input('enter username and password and post_id_for_del: ')
+                name_pwd_target = name_pwd_target.split()
+                if len(name_pwd_target) != 3:
+                    print(f'usage: username pwd id')
+                else:
+                    err, resp = self.delete_post(name_pwd_target)
+                    print(resp)
             elif cmd == 'h' or cmd == '-h':
                 print(_HELP_MSG)
             else:
