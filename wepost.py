@@ -10,7 +10,7 @@ _LOG_PATH = '../wepost.log'
 
 
 class WePost:
-    _CMD_LIST = ['-c, -p, -r, -w, -a, -d, -h, -q']
+    _CMD_LIST = ['-c, -p, -r, -w, -a, -d, -f, -h, -q']
     def __init__(self, _db_path, _log_path):
         self.set_conn(_db_path)
         self.set_logger(_log_path)
@@ -63,6 +63,7 @@ body VARCHAR(512) NOT NULL
         _Q_DELETE_POST = "DELETE FROM Posts WHERE id = ? AND username = ?"
         with self.conn:
             _cur = self.execute(_Q_DELETE_POST, _args)
+            self.conn.commit()
             return 0, f'{_cur.rowcount} entries have been deleted'
     
     def validate_username(self, _name):
@@ -97,6 +98,13 @@ body VARCHAR(512) NOT NULL
             self.conn.execute("INSERT INTO Users (username, password) VALUES (?, ?)", _args)
             self.conn.commit()
         return 0, f'{_args[0]} has been added'
+    
+    def del_user(self, _args):
+        _Q_DELETE_USER = "DELETE FROM Users WHERE username = ?"
+        with self.conn:
+            _cur = self.conn.execute(_Q_DELETE_USER, _args)
+            self.conn.commit()
+            return 0, f'the user: {_args[0]} has been deleted. count: {_cur.rowcount}'
     
     def update_status(self, _args):
         with self.conn:
@@ -220,6 +228,35 @@ body VARCHAR(512) NOT NULL
         if not err:
             self.logger.info(resp)
         return err, resp
+    
+    def delete_user(self, _args):
+        if not _args:
+            _msg =f'not args'
+            return 1, _msg
+        err, resp = self.user_exists(_args[0])
+        if err:
+            return err, resp
+        if not resp:
+            _msg = f'there is no such user'
+            return 1, _msg
+        err, resp_pwd = self.validate_password(resp, _args)
+        if err:
+            return err, resp_pwd
+        if resp_pwd != 'ok':
+            return 0, f"passwords don't match"
+        if resp[0][2] != 99:
+            _msg = f'your status does not allow you to delete users'
+            return err, _msg
+        err, resp = self.user_exists(_args[2])
+        if err:
+            return err, resp
+        if not resp:
+            _msg = f'there is no such user'
+            return 1, _msg
+        err, resp = self.del_user((_args[2],))
+        if not err:
+            self.logger.info(resp)
+        return err, resp
 
     def inter_mode(self):
         _HELP_MSG = '''
@@ -306,6 +343,9 @@ body VARCHAR(512) NOT NULL
         elif _args.d:
             err, resp = self.delete_post(_args.d)
             print(resp)
+        elif _args.f:
+            err, resp = self.delete_user(_args.f)
+            print(resp)
         else:
             print('not args')
             print(_args)
@@ -328,6 +368,8 @@ def make_parser():
     parser.add_argument('-w', type=str, nargs=3 ,help=DESC_W)
     DESC_D = f'usage:$ wepost.py user pwd id_for_post_del'
     parser.add_argument('-d', type=str, nargs=3 ,help=DESC_D)
+    DESC_F = f'usage:$ wepost.py user pwd username_for_del'
+    parser.add_argument('-f', type=str, nargs=3 ,help=DESC_F)
     return parser
 
 def main():
