@@ -15,6 +15,7 @@ class WePost:
         self.set_conn(_db_path)
         self.set_logger(_log_path)
         self.make_db_or_get()
+        self.insert_admin()
 
     def set_conn(self, _db_path):
         self.conn = sqlite3.connect(_db_path)
@@ -70,12 +71,25 @@ body VARCHAR(512) NOT NULL
             return 0, 'not'
         return 0, 'ok'
         
-
+    def insert_admin(self):
+        salt = os.urandom(32)
+        key = hashlib.pbkdf2_hmac('sha256', 'admin'.encode(), salt, 128)
+        with self.conn:
+            self.conn.execute("INSERT OR IGNORE INTO Users (username, password, status) VALUES (?, ?, ?)", ('admin', salt + key, 99))
+            self.conn.commit()
+        return 0, f'admin has been added'
+    
     def insert_user(self, _args):
         with self.conn:
             self.conn.execute("INSERT INTO Users (username, password) VALUES (?, ?)", _args)
             self.conn.commit()
         return 0, f'{_args[0]} has been added'
+    
+    def update_status(self, _args):
+        with self.conn:
+            self.conn.execute("UPDATE Users SET status = ? WHERE username = ?", _args)
+            self.conn.commit()
+        return 0, f'status for {_args[1]} has been updated to {_args[0]}'
     
     def insert_post(self, _args):
         with self.conn:
@@ -134,6 +148,32 @@ body VARCHAR(512) NOT NULL
         if not err:
             self.logger.info(resp)
         return err, resp
+    
+    def change_status(self, _args, _status=0):
+        err, resp = self.user_exists(_args[0])
+        if err:
+            return err, resp
+        if not resp:
+            _msg = f'there is no such user'
+            return 1, _msg
+        err, resp_pwd = self.validate_password(resp, _args)
+        if err:
+            return err, resp_pwd
+        if resp_pwd != 'ok':
+            return 0, f"passwords don't match"
+        if resp[0][2] != 99:
+            _msg = f'your status does not allow you to change status'
+            return err, _msg
+        err, resp = self.user_exists(_args[2])
+        if err:
+            return err, resp
+        if not resp:
+            _msg = f'there is no such user'
+            return 1, _msg
+        err, resp = self.update_status((_status, _args[2]))
+        if not err:
+            self.logger.info(resp)
+        return err, resp
 
     def inter_mode(self):
         _HELP_MSG = '''
@@ -175,6 +215,9 @@ body VARCHAR(512) NOT NULL
         elif _args.p:
             err, resp = self.create_post(_args.p)
             print(resp)
+        elif _args.r:
+            err, resp = self.change_status(_args.r)
+            print(resp)
         else:
             print('not args')
             print(_args)
@@ -189,6 +232,8 @@ def make_parser():
     parser.add_argument('-c', type=str, nargs=2 ,help=DESC_C)
     DESC_P = f'usage:$ wepost.py user pwd post'
     parser.add_argument('-p', type=str, nargs=3 ,help=DESC_P)
+    DESC_R = f'usage:$ wepost.py user_admin pwd user_for_ro'
+    parser.add_argument('-r', type=str, nargs=3 ,help=DESC_R)
     return parser
 
 def main():
