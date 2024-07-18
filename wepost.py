@@ -4,6 +4,8 @@ import string
 import os
 import hashlib
 import logging
+import pathlib
+
 
 _DB_PATH = '../store_post.db'
 _LOG_PATH = '../wepost.log'
@@ -15,7 +17,7 @@ class WePost:
         self.set_conn(_db_path)
         self.set_logger(_log_path)
         self.make_db_or_get()
-        self.insert_admin()
+        self.check_first_run()
 
     def set_conn(self, _db_path):
         self.conn = sqlite3.connect(_db_path)
@@ -45,6 +47,14 @@ body VARCHAR(512) NOT NULL
 ''')
         return 0
     
+    def check_first_run(self):
+        p = pathlib.Path('settings.py')
+        if p.exists():
+            return 0, 'yet'
+        p.write_text('first = False')
+        self.insert_admin()
+        return 0, 'ok'
+
     def user_exists(self, _name):
         with self.conn:
             _Q_SELECT_BY_USERNAME = "SELECT username, password, status FROM Users WHERE username = ? LIMIT 1"
@@ -263,7 +273,7 @@ body VARCHAR(512) NOT NULL
         -q command for quite
         -c create a user. usage: name pwd
         -p make a post
-        -d delete psot
+        -d delete post
         -f delete user
         -r change status to RO
         -w change status to W
@@ -361,8 +371,6 @@ body VARCHAR(512) NOT NULL
             err, resp = self.delete_user(_args.f)
             print(resp)
         else:
-            print('not args')
-            print(_args)
             err, resp = self.inter_mode()
         return 0
 
